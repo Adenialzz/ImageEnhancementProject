@@ -345,7 +345,7 @@ class MUSIQ(nn.Module):
             x = (x - 0.5) * 2
             x = get_multiscale_patches(x, **self.data_preprocess_opts)
 
-        logger.info(x.shape)
+        logger.info(f"x shape, {x.shape}")
         assert len(x.shape) in [3, 4]
         if len(x.shape) == 4:
             b, num_crops, seq_len, dim = x.shape

@@ -20,12 +20,11 @@ class ConvBNReLU(nn.Sequential):
         )
 
 class CAN(nn.Module):
-    def __init__(self,d=9,w=24):
+    def __init__(self, in_planes, d=9,w=24):
         super().__init__()
         l=[]
-        in_planes=3
-        dilate=1
-        for i in range(0,d-2):
+        dilate = 1
+        for i in range(0, d - 2):
             l.append(ConvBNReLU(in_planes,w,dilation=dilate))
             in_planes=w
             dilate*=2
@@ -37,10 +36,13 @@ class CAN(nn.Module):
         return self.conv(x)
 
 if __name__ =='__main__':
-    model=CAN(d=10,w=32)
+    model=CAN(d=10, w=32)
     image_path = "/ssd1t/song/Datasets/AVA/shortEdge256/125.jpg"
-    from SongUtils import ImgUtils as imutils
-    inputs = imutils.readTensorImage(image_path, expand=True)
+    from SongUtils import ImgUtils as imu
+    inputs = imu.readTensorImage(image_path, expand=True, through="opencv")
+
     print(inputs.shape)
+    h, w = inputs.shape[0]
+    torch.zeros()
     outputs = model(inputs)
     print(outputs.shape)
