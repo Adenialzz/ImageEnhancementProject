@@ -13,6 +13,7 @@ from tqdm import tqdm
 
 from dataset import EnhanceDataset
 from CAN_FCN import CAN
+from sit import VisionTransformer_SiT
 
 import argparse
 def get_args():
@@ -20,7 +21,8 @@ def get_args():
     cfg = parser.parse_args()
     return cfg
 
-class CANTrainer(BaseDistTrainer):
+# class CANTrainer(BaseDistTrainer):
+class CANTrainer(BaseTrainer):
     def __init__(self, cfg, model, dataset_list, metrics_list):
         super(CANTrainer, self).__init__(cfg, model, dataset_list, metrics_list)
 
@@ -29,10 +31,13 @@ class CANTrainer(BaseDistTrainer):
 
     def epoch_forward(self, epoch):
         _loss = AverageMeter()
-        for origin, target in self.train_loader:
+        for origin, target, filters in self.train_loader:
             origin = origin.to(self.device)
+            filters = filters.to(self.device)
             target = target.to(self.device)
-            output = self.model(origin)
+
+            inputs = torch.cat((origin, filters), dim=1)
+            output = self.model(inputs)
             loss = self.loss_func(output, target)
             _loss.update(loss.item())
             loss.backward()
@@ -49,18 +54,20 @@ class CANTrainer(BaseDistTrainer):
 
 
 def main_worker(local_rank, nprocs, cfg):
-    init_dist(cfg.gpu_id, cfg.nprocs, local_rank)
+    # init_dist(cfg.gpu_id, cfg.nprocs, local_rank)
     pipeline = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor()
     ])
     dset = EnhanceDataset("./test1w/target_images", "./test1w/origin1w", transform=pipeline)
 
-    model = CAN(in_planes=5, d=10, w=32)
+    # model = CAN(in_planes=6, d=10, w=32)
+    model = VisionTransformer_SiT(in_chans=6)
     trainer = CANTrainer(cfg, model, [dset, dset], ["loss", ])
     trainer.forward()
 
 if __name__ == "__main__":
     cfg = get_args()
-    import torch.multiprocessing as mp
-    mp.spawn(main_worker, nprocs=cfg.nprocs, args=(cfg.nprocs, cfg))
+    main_worker(None, None, cfg)
+    # import torch.multiprocessing as mp
+    # mp.spawn(main_worker, nprocs=cfg.nprocs, args=(cfg.nprocs, cfg))

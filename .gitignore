@@ -133,3 +133,6 @@ nohup.out
 
 # weights dir
 weights/
+
+# images
+*.jpg

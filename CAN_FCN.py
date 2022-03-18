@@ -25,7 +25,7 @@ class CAN(nn.Module):
         l=[]
         dilate = 1
         for i in range(0, d - 2):
-            l.append(ConvBNReLU(in_planes,w,dilation=dilate))
+            l.append(ConvBNReLU(in_planes, w , dilation=dilate))
             in_planes=w
             dilate*=2
         l.append(ConvBNReLU(w,w))
