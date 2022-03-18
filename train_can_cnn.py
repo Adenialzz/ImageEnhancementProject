@@ -11,7 +11,7 @@ from SongUtils.MLUtils.BaseTrainers import BaseTrainer, BaseDistTrainer, init_di
 from SongUtils.MLUtils.BaseArgs import get_dist_base_parser
 from tqdm import tqdm
 
-from dataset import EnhanceDataset
+from dataset import EnhanceDataset, AVADataset
 from CAN_FCN import CAN
 from sit import VisionTransformer_SiT
 
@@ -29,9 +29,16 @@ class CANTrainer(BaseTrainer):
     def init_loss_func(self):
         self.loss_func = torch.nn.MSELoss()
 
-    def epoch_forward(self, epoch):
+    def epoch_forward(self, epoch, isTrain):
+        if isTrain:
+            loader = self.train_loader
+            self.model.train()
+        else:
+            loader = self.val_loader
+            self.model.eval()
+
         _loss = AverageMeter()
-        for origin, target, filters in self.train_loader:
+        for origin, target, filters in loader:
             origin = origin.to(self.device)
             filters = filters.to(self.device)
             target = target.to(self.device)
@@ -43,15 +50,6 @@ class CANTrainer(BaseTrainer):
             loss.backward()
             self.optimizer.step()
         return {'loss': _loss.avg}
-    
-    def forward(self):
-        self.logger.info("Start Training")
-        for epoch in range(self.cfg.epochs):
-            self.logger.info(f"Epoch = {epoch}")
-            train_metric_dict = self.epoch_forward(epoch)
-            self.plot_epoch_metric(epoch, train_metric_dict, train_metric_dict)
-            self.save_model(epoch)
-
 
 def main_worker(local_rank, nprocs, cfg):
     # init_dist(cfg.gpu_id, cfg.nprocs, local_rank)
@@ -59,11 +57,16 @@ def main_worker(local_rank, nprocs, cfg):
         transforms.Resize((224, 224)),
         transforms.ToTensor()
     ])
-    dset = EnhanceDataset("./test1w/target_images", "./test1w/origin1w", transform=pipeline)
+    # dset = EnhanceDataset("./test1w/target_images", "./test1w/origin1w", transform=pipeline)
+    ava_root = '/ssd1t/song/Datasets/AVA/shortEdge256'
+    csv_root = '/home/song/JJ_Projects/FromSong/dsmAVA/csvFiles'
+    train_set = AVADataset(osp.join(csv_root, 'train_mlsp.csv'), ava_root)
+    val_set = AVADataset(osp.join(csv_file, 'val_mlsp.csv'), ava_root)
+
 
     # model = CAN(in_planes=6, d=10, w=32)
     model = VisionTransformer_SiT(in_chans=6)
-    trainer = CANTrainer(cfg, model, [dset, dset], ["loss", ])
+    trainer = CANTrainer(cfg, model, [train_set, val_set], ["loss", ])
     trainer.forward()
 
 if __name__ == "__main__":
