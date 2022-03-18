@@ -1,7 +1,7 @@
 import random
+import torch
 import kornia.enhance as ke
 import cv2
-from SongUtils import IOUtils as iout
 
 
 class ImageEditor:
@@ -28,18 +28,40 @@ class ImageEditor:
             factors.append(random.randint(0, 4))
         return factors
     
+    def gen_filter_channels(self, factors, size=(224, 224)):
+        factor2value_map = {
+            0: -1.,
+            1: -0.5,
+            2: 0.,
+            3: 0.5,
+            4: 1.
+        }
+
+        filter_channels = None
+        for f in factors:
+            value = factor2value_map[f]
+            channel = torch.ones(size).unsqueeze(dim=0) * value
+            if filter_channels is not None:
+                filter_channels = torch.cat((filter_channels, channel), dim=0)
+            else:
+                filter_channels = channel
+        return filter_channels
+    
     def __call__(self, img, factors=None):
         if factors is None:
             factors = self.get_random_factors()
         for f, editor in zip(factors, self.editors):
             img = editor[f](img)
+        
+        filter_channels = self.gen_filter_channels(factors)
 
-        return img, factors
+        return img, filter_channels
 
             
 
 if __name__ == "__main__":
     editor = ImageEditor()
+    from SongUtils import IOUtils as iout
     inp = iout.readTensorImage('imgs/125_224.jpg', through='opencv')
     # out, factors = editor(inp, [0, 3, 2, 2, 4])
     out, factors = editor(inp)

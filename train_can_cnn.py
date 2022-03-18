@@ -14,6 +14,7 @@ from tqdm import tqdm
 from dataset import EnhanceDataset, AVADataset
 from CAN_FCN import CAN
 from sit import VisionTransformer_SiT
+from edit_transform import ImageEditor
 
 import argparse
 def get_args():
@@ -25,6 +26,7 @@ def get_args():
 class CANTrainer(BaseTrainer):
     def __init__(self, cfg, model, dataset_list, metrics_list):
         super(CANTrainer, self).__init__(cfg, model, dataset_list, metrics_list)
+        self.image_editor = ImageEditor()
 
     def init_loss_func(self):
         self.loss_func = torch.nn.MSELoss()
@@ -38,17 +40,27 @@ class CANTrainer(BaseTrainer):
             self.model.eval()
 
         _loss = AverageMeter()
-        for origin, target, filters in loader:
-            origin = origin.to(self.device)
-            filters = filters.to(self.device)
-            target = target.to(self.device)
+        for data in loader:
+            original_images = data["image"].to(self.device)
+            batchSize = original_images.shape[0]
+            edited_images, filter_channels = self.image_editor(original_images)
+            filter_channels = filter_channels.expand(batchSize, 5, 224, 224).to(self.device)
+            edited_images = edited_images.to(self.device)
+            inputs = torch.cat((original_images, filter_channels), dim=1)
 
-            inputs = torch.cat((origin, filters), dim=1)
-            output = self.model(inputs)
-            loss = self.loss_func(output, target)
+            if isTrain:
+                self.optimizer.zero_grad()
+                output = self.model(inputs)
+                loss = self.loss_func(output, edited_images)
+                loss.backward()
+            else:
+                output = self.model(inputs)
+                loss = self.loss_func(output, edited_images)
+
+            if isTrain:
+                self.optimizer.step()
             _loss.update(loss.item())
-            loss.backward()
-            self.optimizer.step()
+
         return {'loss': _loss.avg}
 
 def main_worker(local_rank, nprocs, cfg):
@@ -58,14 +70,14 @@ def main_worker(local_rank, nprocs, cfg):
         transforms.ToTensor()
     ])
     # dset = EnhanceDataset("./test1w/target_images", "./test1w/origin1w", transform=pipeline)
-    ava_root = '/ssd1t/song/Datasets/AVA/shortEdge256'
-    csv_root = '/home/song/JJ_Projects/FromSong/dsmAVA/csvFiles'
-    train_set = AVADataset(osp.join(csv_root, 'train_mlsp.csv'), ava_root)
-    val_set = AVADataset(osp.join(csv_file, 'val_mlsp.csv'), ava_root)
+    ava_root = '/home/song/AVA/shortEdge256'
+    csv_root = '/home/song/JJ_Projects/dsmAVA/csvFiles'
+    train_set = AVADataset(osp.join(csv_root, 'train_mlsp.csv'), ava_root, transform=pipeline)
+    val_set = AVADataset(osp.join(csv_root, 'val_mlsp.csv'), ava_root, transform=pipeline)
 
 
     # model = CAN(in_planes=6, d=10, w=32)
-    model = VisionTransformer_SiT(in_chans=6)
+    model = VisionTransformer_SiT(in_chans=8)
     trainer = CANTrainer(cfg, model, [train_set, val_set], ["loss", ])
     trainer.forward()
 
