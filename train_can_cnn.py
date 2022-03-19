@@ -40,7 +40,7 @@ class CANTrainer(BaseTrainer):
             self.model.eval()
 
         _loss = AverageMeter()
-        for data in loader:
+        for epoch_step, data in enumerate(loader):
             original_images = data["image"].to(self.device)
             batchSize = original_images.shape[0]
             edited_images, filter_channels = self.image_editor(original_images)
@@ -60,7 +60,8 @@ class CANTrainer(BaseTrainer):
             if isTrain:
                 self.optimizer.step()
             _loss.update(loss.item())
-
+            if epoch_step % self.cfg.log_freq == 0:
+                print(f"Step: {epoch_step}, loss: {_loss.avg}")
         return {'loss': _loss.avg}
 
 def main_worker(local_rank, nprocs, cfg):
@@ -76,13 +77,20 @@ def main_worker(local_rank, nprocs, cfg):
     val_set = AVADataset(osp.join(csv_root, 'val_mlsp.csv'), ava_root, transform=pipeline)
 
 
-    # model = CAN(in_planes=6, d=10, w=32)
+    # model = CAN(in_planes=8, d=10, w=32)
     model = VisionTransformer_SiT(in_chans=8)
     trainer = CANTrainer(cfg, model, [train_set, val_set], ["loss", ])
     trainer.forward()
 
+def print_args(cfg):
+    print('*'*21, " - Configs - ", '*'*21)
+    for k, v in vars(cfg).items():
+        print(k, ':', v)
+    print('*'*56)
+
 if __name__ == "__main__":
     cfg = get_args()
+    print_args(cfg)
     main_worker(None, None, cfg)
     # import torch.multiprocessing as mp
     # mp.spawn(main_worker, nprocs=cfg.nprocs, args=(cfg.nprocs, cfg))
