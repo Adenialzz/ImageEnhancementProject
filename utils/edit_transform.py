@@ -22,10 +22,16 @@ class ImageEditor:
 
         self.editors = [brightness_editors_list, gamma_editors_list, contrast_editors_list, satruration_editors_list, hue_editors_list]
 
-    def get_random_factors(self):
-        factors = []
+    def get_random_factors(self, sinlge_filter=False, polar_intensity=False):
+        factors = [2 for _ in range(5)]
         for i in range(5):
-            factors.append(random.randint(0, 4))
+            if polar_intensity:
+                intensity = random.choice([0, 2, 4])
+            else:
+                intensity = random.randint(0, 4)
+            factors[i] = intensity
+            if sinlge_filter and intensity != 2:
+                break
         return factors
     
     def gen_filter_channels(self, factors, size=(224, 224)):
@@ -47,9 +53,9 @@ class ImageEditor:
                 filter_channels = channel
         return filter_channels
     
-    def __call__(self, img, factors=None):
+    def __call__(self, img, factors=None, sinlge_filter=False, polar_intensity=False):
         if factors is None:
-            factors = self.get_random_factors()
+            factors = self.get_random_factors(sinlge_filter, polar_intensity)
         for f, editor in zip(factors, self.editors):
             img = editor[f](img)
         
@@ -61,10 +67,14 @@ class ImageEditor:
 
 if __name__ == "__main__":
     editor = ImageEditor()
-    from SongUtils import IOUtils as iout
-    inp = iout.readTensorImage('imgs/125_224.jpg', through='opencv')
+    # from SongUtils import IOUtils as iout
+    # inp = iout.readTensorImage('imgs/125_224.jpg', through='opencv')
+    inp = torch.ones(3, 224, 224)
     # out, factors = editor(inp, [0, 3, 2, 2, 4])
-    out, factors = editor(inp)
-    img = iout.tensor2cv(out)
-    cv2.imwrite("edited.jpg", img)
+    for i in range(100):
+        out, filter_channels = editor(inp, sinlge_filter=False, polar_intensity=False)
+        l = [filter_channels[i, 0, 0].item() for i in range(5)]
+        print(l, sum(l))
+    # img = iout.tensor2cv(out)
+    # cv2.imwrite("edited.jpg", img)
 
