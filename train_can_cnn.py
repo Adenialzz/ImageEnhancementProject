@@ -12,13 +12,14 @@ from SongUtils.MLUtils.BaseArgs import get_dist_base_parser
 from tqdm import tqdm
 
 from dataset import EnhanceDataset, AVADataset
-from CAN_FCN import CAN
+from models.nicer_models import CAN
 from sit import VisionTransformer_SiT
 from edit_transform import ImageEditor
 
 import argparse
 def get_args():
     parser = get_dist_base_parser()
+    parser.add_argument("--resume", type=str, default=None)
     cfg = parser.parse_args()
     return cfg
 
@@ -43,7 +44,7 @@ class CANTrainer(BaseTrainer):
         for epoch_step, data in enumerate(loader):
             original_images = data["image"].to(self.device)
             batchSize = original_images.shape[0]
-            edited_images, filter_channels = self.image_editor(original_images)
+            edited_images, filter_channels = self.image_editor(original_images, sinle_filter=True, polar_intensity=True)
             filter_channels = filter_channels.expand(batchSize, 5, 224, 224).to(self.device)
             edited_images = edited_images.to(self.device)
             inputs = torch.cat((original_images, filter_channels), dim=1)
@@ -77,8 +78,8 @@ def main_worker(local_rank, nprocs, cfg):
     val_set = AVADataset(osp.join(csv_root, 'val_mlsp.csv'), ava_root, transform=pipeline)
 
 
-    # model = CAN(in_planes=8, d=10, w=32)
-    model = VisionTransformer_SiT(in_chans=8)
+    model = CAN(in_planes=8)
+    # model = VisionTransformer_SiT(in_chans=8)
     trainer = CANTrainer(cfg, model, [train_set, val_set], ["loss", ])
     trainer.forward()
 
