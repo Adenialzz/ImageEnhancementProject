@@ -1,4 +1,5 @@
 import torch
+import cv2
 
 def get_filter_tokens(intensity_str, model_type, size=224):
     intensity2value_map = {
@@ -39,3 +40,7 @@ def load_weights(model, weights_path):
     model_weights = ckpt['state_dict']
     model.load_state_dict(model_weights)
     return model
+
+def save_tensor_image(tensor, path):
+    img = tensor.permute(1, 2, 0).numpy()[:, :, ::-1] * 255.
+    cv2.imwrite(path, img)

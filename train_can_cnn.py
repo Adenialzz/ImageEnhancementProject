@@ -11,10 +11,11 @@ from SongUtils.MLUtils.BaseTrainers import BaseTrainer, BaseDistTrainer, init_di
 from SongUtils.MLUtils.BaseArgs import get_dist_base_parser
 from tqdm import tqdm
 
-from dataset import EnhanceDataset, AVADataset
+from utils.dataset import EnhanceDataset, AVADataset
 from models.nicer_models import CAN
-from sit import VisionTransformer_SiT
-from edit_transform import ImageEditor
+from models.sit import VisionTransformer_SiT
+from utils.edit_transform import ImageEditor
+from utils.utils import save_tensor_image
 
 import argparse
 def get_args():
@@ -44,7 +45,7 @@ class CANTrainer(BaseTrainer):
         for epoch_step, data in enumerate(loader):
             original_images = data["image"].to(self.device)
             batchSize = original_images.shape[0]
-            edited_images, filter_channels = self.image_editor(original_images, sinle_filter=True, polar_intensity=True)
+            edited_images, filter_channels = self.image_editor(original_images, single_filter=True, polar_intensity=True)
             filter_channels = filter_channels.expand(batchSize, 5, 224, 224).to(self.device)
             edited_images = edited_images.to(self.device)
             inputs = torch.cat((original_images, filter_channels), dim=1)
@@ -54,15 +55,15 @@ class CANTrainer(BaseTrainer):
                 output = self.model(inputs)
                 loss = self.loss_func(output, edited_images)
                 loss.backward()
+                self.optimizer.step()
+
             else:
                 output = self.model(inputs)
                 loss = self.loss_func(output, edited_images)
 
-            if isTrain:
-                self.optimizer.step()
             _loss.update(loss.item())
             if epoch_step % self.cfg.log_freq == 0:
-                print(f"Step: {epoch_step}, loss: {_loss.avg}")
+                self.logger.info("Step: {}, loss: {:.4f}".format(epoch_step, _loss.avg))
         return {'loss': _loss.avg}
 
 def main_worker(local_rank, nprocs, cfg):
@@ -78,8 +79,8 @@ def main_worker(local_rank, nprocs, cfg):
     val_set = AVADataset(osp.join(csv_root, 'val_mlsp.csv'), ava_root, transform=pipeline)
 
 
-    model = CAN(in_planes=8)
-    # model = VisionTransformer_SiT(in_chans=8)
+    # model = CAN(5)
+    model = VisionTransformer_SiT(in_chans=8)
     trainer = CANTrainer(cfg, model, [train_set, val_set], ["loss", ])
     trainer.forward()
 

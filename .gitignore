@@ -136,3 +136,9 @@ weights/
 
 # images
 *.jpg
+
+# outputs
+summary/
+
+# Misc
+temp.py

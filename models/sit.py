@@ -120,7 +120,7 @@ class VisionTransformer_SiT(nn.Module):
         - https://arxiv.org/abs/2012.12877
     """
 
-    def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dim=768, depth=12,
+    def __init__(self, img_size=224, patch_size=16, in_chans=3, num_filters=5, num_classes=10, embed_dim=768, depth=12,
                  num_heads=12, mlp_ratio=4., qkv_bias=True, qk_scale=None, representation_size=None, distilled=False,
                  drop_rate=0., attn_drop_rate=0., drop_path_rate=0., embed_layer=PatchEmbed, norm_layer=None,
                  act_layer=None, weight_init='', training_mode='SSL'):
@@ -147,6 +147,7 @@ class VisionTransformer_SiT(nn.Module):
         """
         super().__init__()
         self.num_features = self.embed_dim = embed_dim  # num_features for consistency with other models
+        self.num_filters = num_filters
         norm_layer = norm_layer or partial(nn.LayerNorm, eps=1e-6)
         act_layer = act_layer or nn.GELU
 
@@ -154,7 +155,10 @@ class VisionTransformer_SiT(nn.Module):
             img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim)
         num_patches = self.patch_embed.num_patches
 
-        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches , embed_dim))
+        self.aes_token = torch.nn.Parameter(torch.zeros(1, 1, self.embed_dim))
+        self.filter_tokens_list = [torch.nn.Parameter(torch.zeros(1, 1, self.embed_dim))] * self.num_filters
+
+        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1 + self.num_filters, embed_dim))
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]  # stochastic depth decay rule
@@ -165,6 +169,7 @@ class VisionTransformer_SiT(nn.Module):
             for i in range(depth)])
         self.norm = norm_layer(embed_dim)
 
+        self.aes_head = nn.Linear(self.num_features, num_classes)
 
         # Classifier head(s)
         # self.convTrans = nn.ConvTranspose2d(embed_dim, in_chans, kernel_size=(patch_size, patch_size), 
@@ -172,10 +177,20 @@ class VisionTransformer_SiT(nn.Module):
         self.convTrans = nn.ConvTranspose2d(embed_dim, 3, kernel_size=(patch_size, patch_size), 
                                                 stride=(patch_size, patch_size))
             
+        self.softmax = nn.Softmax(dim=2)
         # Weight init
         trunc_normal_(self.pos_embed, std=.02)
 
         self.apply(self._init_vit_weights)
+    
+    def add_filter_params(self, filter_tokens):
+        self.filter_tokens_list = [
+            torch.nn.Parameter(filter_token[i].unsqueeze(dim=0).unsqueeze(dim=0))
+            for i in range(filter_tokens.shape[0])
+        ]
+        # print(filter_tokens_list[0].shape)
+        for f in filter_tokens_list:
+            f.requires_grad_(False)
 
     def forward_features(self, x):
         B = x.shape[0]
@@ -184,6 +199,11 @@ class VisionTransformer_SiT(nn.Module):
         # rot_token = self.rot_token.expand(B, -1, -1) 
         # contrastive_token = self.contrastive_token.expand(B, -1, -1) 
         # x = torch.cat((rot_token, contrastive_token, x), dim=1)
+        
+        x = torch.cat((x, self.aes_token.expand(B, -1, -1)), dim=1)
+        for f in self.filter_tokens_list:
+            x = torch.cat((x, f.expand(B, -1, -1)), dim=1)
+        # x: 0-195: patch tokens, 196: aes token, 197-201: filter tokens
     
         x = self.pos_drop(x + self.pos_embed)
         x = self.blocks(x)
@@ -192,10 +212,17 @@ class VisionTransformer_SiT(nn.Module):
 
     def forward(self, x):
         x = self.forward_features(x)
-        x_rec = x.transpose(1, 2)
-        x_rec = self.convTrans(x_rec.unflatten(2, to_2tuple(int(math.sqrt(x_rec.size()[2])))))
+        x = x[:, :197]    # drop filter tokens
+
+        x_aes = x[:, -1:]
+        x_aes = self.aes_head(x_aes)
+        x_aes = self.softmax(x_aes).squeeze(dim=1)
         
-        return x_rec
+        x_rec = x[:, :196].transpose(1, 2)
+        x_rec = self.convTrans(x_rec.unflatten(2, to_2tuple(int(math.sqrt(x_rec.size()[2])))))
+
+        
+        return x_rec, x_aes
 
 
     def _init_vit_weights(self, m):

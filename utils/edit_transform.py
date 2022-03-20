@@ -22,19 +22,25 @@ class ImageEditor:
 
         self.editors = [brightness_editors_list, gamma_editors_list, contrast_editors_list, satruration_editors_list, hue_editors_list]
 
-    def get_random_factors(self, sinlge_filter=False, polar_intensity=False):
+    def get_random_factors(self, single_filter=False, polar_intensity=False):
         factors = [2 for _ in range(5)]
-        for i in range(5):
+        if single_filter:
+            chosen_filter = random.choice([i for i in range(5)])
             if polar_intensity:
-                intensity = random.choice([0, 2, 4])
+                factors[chosen_filter] = random.choice([0, 2, 4])
             else:
-                intensity = random.randint(0, 4)
-            factors[i] = intensity
-            if sinlge_filter and intensity != 2:
-                break
+                factors[chosen_filter] = random.randint(0, 4)
+
+        else:
+            for i in range(5):
+                if polar_intensity:
+                    factors[i] = random.choice([0, 2, 4])
+                else:
+                    factors[i] = random.randint(0, 4)
+
         return factors
     
-    def gen_filter_channels(self, factors, size=(224, 224)):
+    def gen_filter_params(self, factors, shape=(224, 224)):
         factor2value_map = {
             0: -1.,
             1: -0.5,
@@ -46,20 +52,20 @@ class ImageEditor:
         filter_channels = None
         for f in factors:
             value = factor2value_map[f]
-            channel = torch.ones(size).unsqueeze(dim=0) * value
+            channel = torch.ones(shape).unsqueeze(dim=0) * value
             if filter_channels is not None:
                 filter_channels = torch.cat((filter_channels, channel), dim=0)
             else:
                 filter_channels = channel
         return filter_channels
     
-    def __call__(self, img, factors=None, sinlge_filter=False, polar_intensity=False):
+    def __call__(self, img, params_shape=(224, 224), single_filter=False, polar_intensity=False, factors=None):
         if factors is None:
-            factors = self.get_random_factors(sinlge_filter, polar_intensity)
+            factors = self.get_random_factors(single_filter, polar_intensity)
         for f, editor in zip(factors, self.editors):
             img = editor[f](img)
         
-        filter_channels = self.gen_filter_channels(factors)
+        filter_channels = self.gen_filter_params(factors, params_shape)
 
         return img, filter_channels
 
@@ -72,9 +78,10 @@ if __name__ == "__main__":
     inp = torch.ones(3, 224, 224)
     # out, factors = editor(inp, [0, 3, 2, 2, 4])
     for i in range(100):
-        out, filter_channels = editor(inp, sinlge_filter=False, polar_intensity=False)
-        l = [filter_channels[i, 0, 0].item() for i in range(5)]
-        print(l, sum(l))
+        out, filter_channels = editor(inp, (768, ), single_filter=False, polar_intensity=False)
+        print(filter_channels.shape)
+        # l = [filter_channels[i, 0, 0].item() for i in range(5)]
+        # print(l, sum(l))
     # img = iout.tensor2cv(out)
     # cv2.imwrite("edited.jpg", img)
 
