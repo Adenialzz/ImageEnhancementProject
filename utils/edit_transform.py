@@ -59,13 +59,13 @@ class ImageEditor:
                 filter_channels = channel
         return filter_channels
     
-    def __call__(self, img, params_shape=(224, 224), single_filter=False, polar_intensity=False, factors=None):
+    def __call__(self, img, filters_shape=(224, 224), single_filter=False, polar_intensity=False, factors=None):
         if factors is None:
             factors = self.get_random_factors(single_filter, polar_intensity)
         for f, editor in zip(factors, self.editors):
             img = editor[f](img)
         
-        filter_channels = self.gen_filter_params(factors, params_shape)
+        filter_channels = self.gen_filter_params(factors, filters_shape)
 
         return img, filter_channels
 

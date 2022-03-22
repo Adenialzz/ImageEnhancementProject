@@ -13,21 +13,20 @@ from tqdm import tqdm
 
 from utils.dataset import EnhanceDataset, AVADataset
 from models.nicer_models import CAN
-from models.sit import VisionTransformer_SiT
+from models.vit_editors import ViT_Editor_Channels, ViT_Editor_Tokens
 from utils.edit_transform import ImageEditor
 from utils.utils import save_tensor_image
 
 import argparse
 def get_args():
     parser = get_dist_base_parser()
-    parser.add_argument("--resume", type=str, default=None)
     cfg = parser.parse_args()
     return cfg
 
 # class CANTrainer(BaseDistTrainer):
-class CANTrainer(BaseTrainer):
+class EditorTrainer(BaseTrainer):
     def __init__(self, cfg, model, dataset_list, metrics_list):
-        super(CANTrainer, self).__init__(cfg, model, dataset_list, metrics_list)
+        super(EditorTrainer, self).__init__(cfg, model, dataset_list, metrics_list)
         self.image_editor = ImageEditor()
 
     def init_loss_func(self):
@@ -45,10 +44,16 @@ class CANTrainer(BaseTrainer):
         for epoch_step, data in enumerate(loader):
             original_images = data["image"].to(self.device)
             batchSize = original_images.shape[0]
-            edited_images, filter_channels = self.image_editor(original_images, single_filter=True, polar_intensity=True)
-            filter_channels = filter_channels.expand(batchSize, 5, 224, 224).to(self.device)
+
+            edited_images, filter_tokens = self.image_editor(original_images, (768, ), single_filter=True, polar_intensity=True)
             edited_images = edited_images.to(self.device)
-            inputs = torch.cat((original_images, filter_channels), dim=1)
+            filter_tokens = filter_tokens.to(self.device)
+            self.model.add_filter_tokens(filter_tokens)
+            # edited_images, filter_channels = self.image_editor(original_images, (224, 224), single_filter=True, polar_intensity=True)
+            # filter_channels = filter_channels.expand(batchSize, 5, 224, 224).to(self.device)
+            edited_images = edited_images.to(self.device).to(self.device)
+            # inputs = torch.cat((original_images, filter_channels), dim=1)
+            inputs = original_images
 
             if isTrain:
                 self.optimizer.zero_grad()
@@ -72,27 +77,21 @@ def main_worker(local_rank, nprocs, cfg):
         transforms.Resize((224, 224)),
         transforms.ToTensor()
     ])
-    # dset = EnhanceDataset("./test1w/target_images", "./test1w/origin1w", transform=pipeline)
-    ava_root = '/home/song/AVA/shortEdge256'
-    csv_root = '/home/song/JJ_Projects/dsmAVA/csvFiles'
+    ava_root = '/ssd1t/song/Datasets/AVA/shortEdge256'
+    csv_root = '/home/ps/JJ_Projects/FromSong/dsmAVA/csvFiles'
     train_set = AVADataset(osp.join(csv_root, 'train_mlsp.csv'), ava_root, transform=pipeline)
     val_set = AVADataset(osp.join(csv_root, 'val_mlsp.csv'), ava_root, transform=pipeline)
 
 
     # model = CAN(5)
-    model = VisionTransformer_SiT(in_chans=8)
-    trainer = CANTrainer(cfg, model, [train_set, val_set], ["loss", ])
+    # model = ViT_Editor_Channels(in_chans=8)
+    model = ViT_Editor_Tokens(in_chans=3, num_filters=5)
+    trainer = EditorTrainer(cfg, model, [train_set, val_set], ["loss", ])
     trainer.forward()
 
-def print_args(cfg):
-    print('*'*21, " - Configs - ", '*'*21)
-    for k, v in vars(cfg).items():
-        print(k, ':', v)
-    print('*'*56)
 
 if __name__ == "__main__":
     cfg = get_args()
-    print_args(cfg)
     main_worker(None, None, cfg)
     # import torch.multiprocessing as mp
     # mp.spawn(main_worker, nprocs=cfg.nprocs, args=(cfg.nprocs, cfg))

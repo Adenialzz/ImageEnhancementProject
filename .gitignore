@@ -138,7 +138,8 @@ weights/
 *.jpg
 
 # outputs
-summary/
+debug_summary/
+debug_saved_models/
 
 # Misc
 temp.py
