@@ -140,6 +140,7 @@ weights/
 # outputs
 debug_summary/
 debug_saved_models/
+ImageEnhancingResults/
 
 # Misc
 temp.py
