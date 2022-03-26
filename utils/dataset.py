@@ -119,3 +119,35 @@ class AVADataset(Dataset):
             sample['image'] = self.transform(sample['image'])
 
         return sample
+
+class ColorizationDataset(Dataset):
+    """AVA dataset
+
+    Args:
+        # csv_file: a 11-column csv_file, column one contains the names of image files, column 2-11 contains the empiricial distributions of ratings
+        csv_file: a 12-column csv_file, column one contains the names of image files, column 2-11 contains the empiricial distributions of ratings, column 12 contains the bin_cls infomation
+        root_dir: directory to the images
+        transform: preprocessing and augmentation of the training images
+    """
+
+    def __init__(self, csv_file, root_dir):
+        self.annotations = pd.read_csv(csv_file)
+        self.root_dir = root_dir
+        self.transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor()
+        ])
+        self.gray_transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.Grayscale(num_output_channels=3),
+            transforms.ToTensor()
+        ])
+
+    def __len__(self):
+        return len(self.annotations)
+
+    def __getitem__(self, idx):
+        img_name = os.path.join(self.root_dir, str(self.annotations.iloc[idx, 0]) + '.jpg')
+        image = Image.open(img_name).convert('RGB')
+        sample = {'gray_image': self.gray_transform(image), 'original_image': self.transform(image)}
+        return sample
