@@ -54,6 +54,16 @@ def get_score(score_distri, device):
 
     return score
 
+def load_weights_resize_pos_embed(model, weights_path):
+    ckpt = torch.load(weights_path, map_location='cpu')
+    model_weights = ckpt["state_dict"]
+    add = torch.ones(1, 1, 768)
+    model_weights["pos_embed"] = torch.cat((model_weights["pos_embed"], add), dim=1)
+    
+    msg = model.load_state_dict(model_weights, strict=False)
+    print(msg)
+    return model
+
 def save_tensor_image(tensor, path):
     img = tensor.permute(1, 2, 0).numpy()[:, :, ::-1] * 255.
     cv2.imwrite(path, img)

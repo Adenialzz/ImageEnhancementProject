@@ -15,7 +15,7 @@ from utils.dataset import EnhanceDataset, AVADataset
 from models.vit_enhancers import ViT_Enhancer_Channels
 from trainers.vit_enhancer_trainer import EnhancerTrainer
 from utils.edit_transform import ImageEditor
-from utils.utils import save_tensor_image
+from utils.utils import save_tensor_image, load_weights_resize_pos_embed
 
 import argparse
 def get_args():
@@ -39,6 +39,7 @@ def main_worker(local_rank, nprocs, cfg):
 
     # model = CAN(5)
     model = ViT_Enhancer_Channels(in_chans=8, depth=6)
+    model = load_weights_resize_pos_embed(model, "/media/song/ImageEnhancingResults/weights/vit_editor_channels_d6_lr1e-1/model_42.pth")
     # model = ViT_Editor_Tokens(in_chans=3, num_filters=5, depth=6)
     metrics_list = [
         "emd_loss", "mse_loss", "loss",

@@ -16,7 +16,7 @@ from models.nicer_models import CAN
 from models.vit_editors import ViT_Editor_Channels, ViT_Editor_Tokens
 from trainers.editor_trainers import EditorTrainer_Channels, EditorTrainer_Tokens
 from utils.edit_transform import ImageEditor
-from utils.utils import save_tensor_image
+from utils.utils import save_tensor_image, load_weights
 
 import argparse
 def get_args():
@@ -37,10 +37,10 @@ def main_worker(local_rank, nprocs, cfg):
 
 
     # model = CAN(5)
-    # model = ViT_Editor_Channels(in_chans=8)
-    model = ViT_Editor_Tokens(in_chans=3, num_filters=5)
-    # trainer = EditorTrainer_Channels(cfg, model, [train_set, val_set], ["loss", ])
-    trainer = EditorTrainer_Tokens(cfg, model, [train_set, val_set], ["loss", ])
+    model = ViT_Editor_Channels(in_chans=8, depth=6)
+    # model = ViT_Editor_Tokens(in_chans=3, num_filters=5, depth=6)
+    trainer = EditorTrainer_Channels(cfg, model, [train_set, val_set], ["loss", ])
+    # trainer = EditorTrainer_Tokens(cfg, model, [train_set, val_set], ["loss", ])
     trainer.forward()
 
 
