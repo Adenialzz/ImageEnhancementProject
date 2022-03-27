@@ -1,8 +1,11 @@
-CUDA_LAUNCH_BLOCKING=1 python train_can_cnn.py \
-	--log-level INFO \
+dir=/media/song/ImageEnhancingResults/ \
+tbx=vit_enhancer_channels_1e-3 \
+
+python train_enhancer.py \
+	--log-level DEBUG \
 	--log-freq 50 \
-	--lr 1e-2 \
-	--batchSize 48 \
-	--device cuda:0 \
-	--model-path /media/song/ImageEnhancingResults/model/vit_editor_tokens_lr1e-2 \
-	--summary-path /media/song/ImageEnhancingResults/summaries/vit_editor_tokens_1e-2 \
+	--lr 1e-3 \
+	--batchSize 96 \
+	--device cuda:2 \
+	--model-path ${dir}weights/${tbx} \
+	--summary-path ${dir}summaries/${tbx} \
