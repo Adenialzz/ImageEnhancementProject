@@ -11,7 +11,7 @@ from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 from timm.models.registry import register_model
 
-from models.sit import Mlp, Attention, Block, PatchEmbed
+from models.vit_components import Mlp, Attention, Block, PatchEmbed
 
 _logger = logging.getLogger(__name__)
     

@@ -1,5 +1,6 @@
 import torch
 import cv2
+import numpy as np
 
 def get_filter_tokens(intensity_str, model_type, size=224):
     intensity2value_map = {
@@ -40,6 +41,18 @@ def load_weights(model, weights_path):
     model_weights = ckpt['state_dict']
     model.load_state_dict(model_weights)
     return model
+
+def get_score(score_distri, device):
+    '''
+    score_distri shape:  batch_size * 10
+    '''
+    w = torch.from_numpy(np.linspace(1, 10, 10))
+    w = w.type(torch.FloatTensor).to(device)
+    w_batch = w.repeat(score_distri.size(0), 1)
+
+    score = (score_distri * w_batch).sum(dim=1)
+
+    return score
 
 def save_tensor_image(tensor, path):
     img = tensor.permute(1, 2, 0).numpy()[:, :, ::-1] * 255.
