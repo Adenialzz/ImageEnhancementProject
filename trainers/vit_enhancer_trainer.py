@@ -13,7 +13,6 @@ from utils.edit_transform import ImageEditor
 from utils.loss import emd_loss
 from utils.utils import get_score
 
-# class CANTrainer(BaseDistTrainer):
 class EnhancerTrainer(BaseTrainer):
     def __init__(self, cfg, model, dataset_list, metrics_list):
         super(EnhancerTrainer, self).__init__(cfg, model, dataset_list, metrics_list)
