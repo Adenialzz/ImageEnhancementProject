@@ -54,9 +54,9 @@ class EnhancerTrainer(BaseTrainer):
             if isTrain:
                 self.optimizer.zero_grad()
             enhanced_image, aes_output = self.model(inputs)
-            emd_loss = self.loss_func_emd(aes_output, distri_label)
-            mse_loss = self.loss_func_mse(enhanced_image, edited_images)
-            loss = self.cfg.emd_gamma * emd_loss + self.cfg.mse_gamma * mse_loss
+            emd_loss = self.cfg.emd_gamma * self.loss_func_emd(aes_output, distri_label)
+            mse_loss = self.cfg.mse_gamma * self.loss_func_mse(enhanced_image, edited_images)
+            loss = emd_loss + mse_loss
             if isTrain:
                 loss.backward()
             

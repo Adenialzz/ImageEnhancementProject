@@ -13,8 +13,8 @@ from tqdm import tqdm
 
 from utils.dataset import EnhanceDataset, AVADataset
 from models.nicer_models import CAN
-from models.vit_editors import ViT_Editor_Channels, ViT_Editor_Tokens
-from trainers.editor_trainers import EditorTrainer_Channels, EditorTrainer_Tokens
+from models.vit_editors import ViT_Editor_Channels, ViT_Editor_Tokens,  ViT_Editor_midChannels
+from trainers.editor_trainers import EditorTrainer_Channels, EditorTrainer_Tokens, EditorTrainer_midChannels
 from utils.edit_transform import ImageEditor
 from utils.utils import save_tensor_image, load_weights
 
@@ -36,11 +36,8 @@ def main_worker(local_rank, nprocs, cfg):
     val_set = AVADataset(osp.join(csv_root, 'val_mlsp.csv'), ava_root, transform=pipeline)
 
 
-    # model = CAN(5)
-    model = ViT_Editor_Channels(in_chans=8, depth=6)
-    # model = ViT_Editor_Tokens(in_chans=3, num_filters=5, depth=6)
-    trainer = EditorTrainer_Channels(cfg, model, [train_set, val_set], ["loss", ])
-    # trainer = EditorTrainer_Tokens(cfg, model, [train_set, val_set], ["loss", ])
+    model = ViT_Editor_midChannels(in_chans=3, depth=6)
+    trainer = EditorTrainer_midChannels(cfg, model, [train_set, val_set], ["loss", ])
     trainer.forward()
 
 

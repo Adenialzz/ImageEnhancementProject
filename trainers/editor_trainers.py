@@ -98,3 +98,41 @@ class EditorTrainer_Channels(BaseEditorTrainer):
             if epoch_step % self.cfg.log_freq == 0:
                 self.logger.info("Step: {}, loss: {:.4f}".format(epoch_step, _loss.avg))
         return {'loss': _loss.avg}
+
+
+class EditorTrainer_midChannels(BaseEditorTrainer):
+    def __init__(self, cfg, model, dataset_list, metrics_list):
+        super(EditorTrainer_midChannels, self).__init__(cfg, model, dataset_list, metrics_list)
+
+    def epoch_forward(self, epoch, isTrain):
+        if isTrain:
+            loader = self.train_loader
+            self.model.train()
+        else:
+            loader = self.val_loader
+            self.model.eval()
+
+        _loss = AverageMeter()
+        for epoch_step, data in enumerate(loader):
+            original_images = data["image"].to(self.device)
+            batchSize = original_images.shape[0]
+
+            edited_images, filter_channels = self.image_editor(original_images, (14, 14), single_filter=True, polar_intensity=True)
+            filter_channels = filter_channels.expand(batchSize, 5, 14, 14).to(self.device)
+            edited_images = edited_images.to(self.device).to(self.device)
+
+            if isTrain:
+                self.optimizer.zero_grad()
+                output = self.model(original_images, filter_channels)
+                loss = self.loss_func(output, edited_images)
+                loss.backward()
+                self.optimizer.step()
+
+            else:
+                output = self.model(original_images, filter_channels)
+                loss = self.loss_func(output, edited_images)
+
+            _loss.update(loss.item())
+            if epoch_step % self.cfg.log_freq == 0:
+                self.logger.info("Step: {}, loss: {:.4f}".format(epoch_step, _loss.avg))
+        return {'loss': _loss.avg}

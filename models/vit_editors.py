@@ -86,10 +86,72 @@ class ViT_Editor_Channels(nn.Module):
         x = self.forward_features(x)
         
         x_rec = x.transpose(1, 2)
+        print(x_rec.shape)
+        print(x_rec.unflatten(2, to_2tuple(int(math.sqrt(x_rec.size()[2])))).shape)
         x_rec = self.convTrans(x_rec.unflatten(2, to_2tuple(int(math.sqrt(x_rec.size()[2])))))
         
         return x_rec
 
+
+    def _init_vit_weights(self, m):
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+        if isinstance(m, nn.Linear) and m.bias is not None:
+            nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+
+
+class ViT_Editor_midChannels(nn.Module):
+    def __init__(self, img_size=224, patch_size=16, num_filters=5, in_chans=3, num_classes=10, embed_dim=768, depth=12,
+                 num_heads=12, mlp_ratio=4., qkv_bias=True, qk_scale=None, representation_size=None, distilled=False,
+                 drop_rate=0., attn_drop_rate=0., drop_path_rate=0., embed_layer=PatchEmbed, norm_layer=None,
+                 act_layer=None, weight_init=''):
+        super().__init__()
+        self.num_features = self.embed_dim = embed_dim  # num_features for consistency with other models
+        self.num_filters = num_filters
+        norm_layer = norm_layer or partial(nn.LayerNorm, eps=1e-6)
+        act_layer = act_layer or nn.GELU
+
+        self.patch_embed = embed_layer(
+            img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim)
+        num_patches = self.patch_embed.num_patches
+
+        # self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1 + self.num_filters, embed_dim))
+        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches, embed_dim))
+        self.pos_drop = nn.Dropout(p=drop_rate)
+
+        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]  # stochastic depth decay rule
+        self.blocks = nn.Sequential(*[ Block( dim=embed_dim, num_heads=num_heads, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, qk_scale=qk_scale, drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[i], norm_layer=norm_layer, act_layer=act_layer) for i in range(depth)])
+        self.norm = norm_layer(embed_dim)
+
+        self.convTrans = nn.ConvTranspose2d(embed_dim+self.num_filters, 3, kernel_size=(patch_size, patch_size), 
+                                                stride=(patch_size, patch_size))
+            
+        # Weight init
+        trunc_normal_(self.pos_embed, std=.02)
+
+        self.apply(self._init_vit_weights)
+
+    def forward_features(self, x):
+        B = x.shape[0]
+        x = self.patch_embed(x)
+    
+        x = self.pos_drop(x + self.pos_embed)
+        x = self.blocks(x)
+        x = self.norm(x)
+        return x
+
+    def forward(self, x, filter_channels):
+        x = self.forward_features(x)    # bs, 768, 196
+        
+        x_rec = x.transpose(1, 2)
+        x_rec = x_rec.unflatten(2, to_2tuple(int(math.sqrt(x_rec.size()[2]))))
+        x_rec = torch.cat((x_rec, filter_channels), dim=1)
+        x_rec = self.convTrans(x_rec)
+        
+        return x_rec
 
     def _init_vit_weights(self, m):
         if isinstance(m, nn.Linear):
