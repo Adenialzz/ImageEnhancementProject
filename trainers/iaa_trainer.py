@@ -45,7 +45,7 @@ class IAATrainer(BaseTrainer):
             if isTrain:
                 self.optimizer.zero_grad()
             output = self.model(image)
-            output = self.softmax(output)
+            # output = self.softmax(output)
 
             loss = self.loss_func(output, label)
             if isTrain:

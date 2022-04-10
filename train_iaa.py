@@ -6,22 +6,24 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torch.optim import SGD
 
+import timm
+
 from SongUtils.MetricUtils import AverageMeter, accuracy
 from SongUtils.MLUtils.BaseTrainers import BaseTrainer, BaseDistTrainer, init_dist
 from SongUtils.MLUtils.BaseArgs import get_dist_base_parser
 from tqdm import tqdm
 
 from utils.dataset import EnhanceDataset, AVADataset
-from models.vit_enhancers import ViT_Enhancer_Channels
-from trainers.vit_enhancer_trainer import EnhancerTrainer
+from models.nicer_models import CAN
+from models.iaa_models import IAAModel
+from trainers.iaa_trainer import IAATrainer
 from utils.edit_transform import ImageEditor
-from utils.utils import save_tensor_image, load_weights_resize_pos_embed
+from utils.utils import save_tensor_image, load_weights_resize_pos_embed, load_weights, load_timm_weights
+from models.vit_components import Mlp, Attention, Block, PatchEmbed
 
 import argparse
 def get_args():
     parser = get_dist_base_parser()
-    parser.add_argument("--emd-gamma", type=float, default=1.)
-    parser.add_argument("--mse-gamma", type=float, default=1.)
     cfg = parser.parse_args()
     return cfg
 
@@ -37,20 +39,20 @@ def main_worker(local_rank, nprocs, cfg):
     val_set = AVADataset(osp.join(csv_root, 'val_mlsp.csv'), ava_root, transform=pipeline)
 
 
-    model = ViT_Enhancer_Channels(in_chans=8, depth=6)
-    # model = load_weights_resize_pos_embed(model, "/media/song/ImageEnhancingResults/weights/vit_editor_channels_d6_lr1e-1/model_42.pth")
+    model = IAAModel(in_chans=3, depth=12)
+    # model = load_weights_resize_pos_embed(model, './colorizer_weights/model_7.pth')
+
+    # model = timm.create_model('vit_base_patch16_224_in21k', num_classes=10)
+    # model = load_timm_weights(model, '/home/ps/.cache/torch/hub/checkpoints//jx_vit_base_patch16_224_in21k-e5005f0a.pth')
+
     metrics_list = [
-        "emd_loss", "mse_loss", "loss",
-        "plcc_mean", "srcc_mean", "plcc_std", "srcc_std",
-        "acc"
+        "loss", "acc",
+        "plcc_mean", "srcc_mean", "plcc_std", "srcc_std"
     ]
-    trainer = EnhancerTrainer(cfg, model, [train_set, val_set], metrics_list)
-    # trainer = EditorTrainer_Tokens(cfg, model, [train_set, val_set], ["loss", ])
+    trainer = IAATrainer(cfg, model, [train_set, val_set], metrics_list)
     trainer.forward()
 
 
 if __name__ == "__main__":
     cfg = get_args()
     main_worker(None, None, cfg)
-    # import torch.multiprocessing as mp
-    # mp.spawn(main_worker, nprocs=cfg.nprocs, args=(cfg.nprocs, cfg))

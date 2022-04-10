@@ -64,6 +64,19 @@ def load_weights_resize_pos_embed(model, weights_path):
     print(msg)
     return model
 
+def load_timm_weights(model, weights_path):
+    model_weights = torch.load(weights_path, map_location='cpu')
+    new_model_weights = {}
+    for name, weight in model_weights.items():
+        if 'head' not in name:
+            new_model_weights[name] = weight
+
+    msg = model.load_state_dict(new_model_weights, strict=False)
+    print(msg)
+    return model
+
+
+
 def save_tensor_image(tensor, path):
     img = tensor.permute(1, 2, 0).numpy()[:, :, ::-1] * 255.
     cv2.imwrite(path, img)
