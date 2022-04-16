@@ -3,7 +3,7 @@ import torch.nn.functional as F
 
 class CAN(nn.Module):
 
-    def __init__(self, no_of_filters=3):
+    def __init__(self, no_of_filters=5):
         super(CAN, self).__init__()
 
         # CAN24 architecture: 3 RGB + 8 Filter Channels -> 11 InChannels
@@ -29,15 +29,25 @@ class CAN(nn.Module):
 
     def forward(self, x):
         inshape = x.shape
+        print(x.shape)
         x = F.leaky_relu(self.conv1(x), negative_slope=0.2)
+        print(x.shape)
         x = F.leaky_relu(self.conv2(x), negative_slope=0.2)
+        print(x.shape)
         x = F.leaky_relu(self.conv3(x), negative_slope=0.2)
+        print(x.shape)
         x = F.leaky_relu(self.conv4(x), negative_slope=0.2)
+        print(x.shape)
         x = F.leaky_relu(self.conv5(x), negative_slope=0.2)
+        print(x.shape)
         x = F.leaky_relu(self.conv6(x), negative_slope=0.2)
+        print(x.shape)
         x = F.leaky_relu(self.conv7(x), negative_slope=0.2)
+        print(x.shape)
         x = F.leaky_relu(self.conv9(x), negative_slope=0.2)
+        print(x.shape)
         x = self.conv10(x)  # no activation in last layer
+        print(x.shape)
 
         if inshape[-2] != x.shape[-2] or inshape[-1] != x.shape[-1]:
             error_callback('forward_conv')
@@ -59,3 +69,9 @@ class NIMA_VGG(nn.Module):
         out = out.view(out.size(0), -1)
         out = self.classifier(out)
         return out
+
+if __name__ == "__main__":
+    import torch
+    model = CAN()
+    inputs = torch.ones(4, 8, 224, 224)
+    outputs = model(inputs)

@@ -11,6 +11,9 @@ from SongUtils.MLUtils.BaseTrainers import BaseTrainer, BaseDistTrainer, init_di
 from SongUtils.MLUtils.BaseArgs import get_dist_base_parser
 from tqdm import tqdm
 
+import sys
+sys.path.append('/home/ps/JJ_Projects/ImageEnhancementProject')
+
 from utils.dataset import EnhanceDataset, AVADataset
 from models.nicer_models import CAN
 from models.vit_editors import ViT_Editor_Channels, ViT_Editor_Tokens,  ViT_Editor_midChannels
@@ -36,7 +39,7 @@ def main_worker(local_rank, nprocs, cfg):
     val_set = AVADataset(osp.join(csv_root, 'val_mlsp.csv'), ava_root, transform=pipeline)
 
 
-    model = ViT_Editor_midChannels(in_chans=3, depth=6)
+    model = ViT_Editor_midChannels(in_chans=3, depth=6, embed_dim=768*3)
     trainer = EditorTrainer_midChannels(cfg, model, [train_set, val_set], ["loss", ])
     trainer.forward()
 

@@ -39,12 +39,12 @@ def main_worker(local_rank, nprocs, cfg):
     ])
     ava_root = '/ssd1t/song/Datasets/AVA/shortEdge256'
     csv_root = '/home/ps/JJ_Projects/FromSong/dsmAVA/csvFiles'
-    train_set = AVADataset(osp.join(csv_root, 'train_mlsp.csv'), ava_root, transform=pipeline)
+    train_set = AVADataset(osp.join(csv_root, 'split_trainset/0_split.csv'), ava_root, transform=pipeline)
     val_set = AVADataset(osp.join(csv_root, 'val_mlsp.csv'), ava_root, transform=pipeline)
 
 
     model = IAAModel(in_chans=3, depth=12)
-    # model = load_weights_resize_pos_embed(model, './colorizer_weights/model_7.pth')
+    model = load_weights_resize_pos_embed(model, './colorizer_weights/model_7.pth')
 
     # model = timm.create_model('vit_base_patch16_224_in21k', num_classes=10)
     # model = load_timm_weights(model, '/home/ps/.cache/torch/hub/checkpoints//jx_vit_base_patch16_224_in21k-e5005f0a.pth')
