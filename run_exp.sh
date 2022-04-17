@@ -3,9 +3,12 @@
 # job_name=iaa/vit_iaa_colorizer_train0
 python tools/train_script/preference_vector.py \
 	--log-level INFO \
-	--log-freq 50 \
-	--lr 1e-2 \
+	--log-freq 64 \
+	--epochs 20 \
+	--lr 1e-4 \
 	--batchSize 4 \
 	--device cuda:2 \
+	--realbatchSize 64 \
+	--target 'B' \
 	# --model-path /media/song/ImageEnhancingResults/weights/${job_name} \
 	# --summary-path /media/song/ImageEnhancingResults/summaries/${job_name} \

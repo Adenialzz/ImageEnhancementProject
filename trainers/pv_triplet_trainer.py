@@ -3,6 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import SGD
 
+import os
+import os.path as osp
+
 from SongUtils.MLUtils.BaseTrainers import BaseTrainer
 from SongUtils.MetricUtils import AverageMeter
 
@@ -12,6 +15,22 @@ class PVTrainer(BaseTrainer):
     def __init__(self, cfg, model, dataset_list, metrics_list):
         self.k = torch.nn.Parameter(torch.zeros(1, 512))
         super(PVTrainer, self).__init__(cfg, model, dataset_list, metrics_list)
+    
+    def save_model(self, epoch):
+        if not osp.isdir(self.cfg.model_path):
+            os.mkdir(self.cfg.model_path)
+        state = {
+            'state_dict': self.model.state_dict(),
+            'optimizer': self.optimizer.state_dict(),
+            'epoch': epoch
+        }
+        k_state = {
+            'preference_vector': self.k,
+            'optimizer': self.optimizer.state_dict(),
+            'epoch': epoch
+        }
+        torch.save(state, osp.join(self.cfg.model_path, f"model_{epoch}.pth"))
+        torch.save(k_state, osp.join(self.cfg.model_path, f"pv_k_{epoch}.pth"))
 
     def init_loss_func(self):
         self.loss_func = TripletLoss()
@@ -41,7 +60,6 @@ class PVTrainer(BaseTrainer):
             feat_pos = self.model(data_pos)
             feat_neg = self.model(data_neg)
             feat_k = self.k.expand(bs, -1).to(self.device)
-            # print(feat_k.shape, feat_pos.shape, feat_neg.shape)
             loss = self.loss_func(feat_k, feat_pos, feat_neg)
 
             if isTrain :
@@ -54,12 +72,7 @@ class PVTrainer(BaseTrainer):
             if epoch_step % self.cfg.log_freq == 0:
                 self.logger.info("Step: {}, loss: {:.4f}".format(epoch_step, _loss.avg))
 
- 
-if __name__ == "__main__":
-    loss_func = TripletLoss()
-    a = torch.ones(4, 512)
-    p = torch.ones(4, 512)
-    n = torch.ones(4, 512)
-    loss = loss_func(a, p, n)
-    print(loss)
-    print(loss.shape)
+        metrics_dict = {}
+        for metric in self.metrics_list:
+            metrics_dict[metric] = eval('_' + metric).avg
+        return metrics_dict

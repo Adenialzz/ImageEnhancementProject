@@ -13,6 +13,8 @@ from tqdm import tqdm
 
 import sys
 sys.path.append('/home/ps/JJ_Projects/ImageEnhancementProject')
+import random
+import numpy as np
 
 from utils.dataset import FiveKDataset
 from models.feat_extractor import FeatExtractor
@@ -23,21 +25,33 @@ import argparse
 def get_args():
     parser = get_dist_base_parser()
     parser.add_argument('--realbatchSize', type=int, default=64)
+    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--target', type=str, default='A')
     cfg = parser.parse_args()
     return cfg
 
+def setup_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+
 def main_worker(local_rank, nprocs, cfg):
     # init_dist(cfg.gpu_id, cfg.nprocs, local_rank)
+    setup_seed(cfg.seed)
     pipeline = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor()
     ])
 
     data_root = '/ssd1t/song/Datasets/FiveK'
-    train_image_name_list = os.listdir(osp.join(data_root, 'A'))[: 4500]
-    val_image_name_list = os.listdir(osp.join(data_root, 'A'))[4500: ]
-    train_set = FiveKDataset(data_root, target='A', image_name_list=train_image_name_list, transform=pipeline)
-    val_set = FiveKDataset(data_root, target='A', image_name_list=val_image_name_list, transform=pipeline)
+    train_image_name_list = os.listdir(osp.join(data_root, 'inputs'))[: 4500]
+    val_image_name_list = os.listdir(osp.join(data_root, 'inputs'))[4500: ]
+    train_set = FiveKDataset(data_root, target=cfg.target, image_name_list=train_image_name_list, transform=pipeline)
+    val_set = FiveKDataset(data_root, target=cfg.target, image_name_list=val_image_name_list, transform=pipeline)
 
     model = FeatExtractor()
     trainer = PVTrainer(cfg, model, [train_set, val_set], ["loss", ])
