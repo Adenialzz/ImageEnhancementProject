@@ -3,6 +3,7 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
 import os
 import os.path as osp
+import random
 import pandas as pd
 from PIL import Image
 
@@ -151,3 +152,28 @@ class ColorizationDataset(Dataset):
         image = Image.open(img_name).convert('RGB')
         sample = {'gray_image': self.gray_transform(image), 'original_image': self.transform(image)}
         return sample
+
+class FiveKDataset(Dataset):
+    def __init__(self, root_dir, image_name_list, target, transform=None):
+        self.root_dir = root_dir
+        self.transform = transform
+        self.image_name_list = image_name_list
+        self.neg_dir = ['A', 'B', 'C', 'D', 'E']
+        self.neg_dir.remove(target)
+        self.pos_dir = target
+    
+    def __len__(self):
+        return len(self.image_name_list)
+    
+    def __getitem__(self, idx):
+        image_name = self.image_name_list[idx]
+        pos_path = osp.join(self.root_dir, self.pos_dir, image_name)
+        neg_path = osp.join(self.root_dir, random.choice(self.neg_dir), image_name)
+        pos_image = Image.open(pos_path).convert('RGB')
+        neg_image = Image.open(neg_path).convert('RGB')
+        if self.transform is not None:
+            pos_image = self.transform(pos_image)
+            neg_image = self.transform(neg_image)
+
+        return {'positive': pos_image, 'negative': neg_image}
+    
