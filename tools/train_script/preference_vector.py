@@ -16,9 +16,9 @@ sys.path.append('/home/ps/JJ_Projects/ImageEnhancementProject')
 import random
 import numpy as np
 
-from utils.dataset import FiveKDataset
+from utils.dataset import FiveKDataset, FiveKDataset_New
 from models.feat_extractor import FeatExtractor
-from trainers.pv_triplet_trainer import PVTrainer
+from trainers.pv_triplet_trainer import PVTrainer, AllPVTrainer
 from utils.utils import save_tensor_image, load_weights
 
 import argparse
@@ -50,11 +50,13 @@ def main_worker(local_rank, nprocs, cfg):
     data_root = '/ssd1t/song/Datasets/FiveK'
     train_image_name_list = os.listdir(osp.join(data_root, 'inputs'))[: 4500]
     val_image_name_list = os.listdir(osp.join(data_root, 'inputs'))[4500: ]
-    train_set = FiveKDataset(data_root, target=cfg.target, image_name_list=train_image_name_list, transform=pipeline)
-    val_set = FiveKDataset(data_root, target=cfg.target, image_name_list=val_image_name_list, transform=pipeline)
+    # train_set = FiveKDataset(data_root, target=cfg.target, image_name_list=train_image_name_list, transform=pipeline)
+    # val_set = FiveKDataset(data_root, target=cfg.target, image_name_list=val_image_name_list, transform=pipeline)
+    train_set = FiveKDataset_New(data_root, target=cfg.target, image_name_list=train_image_name_list, transform=pipeline)
+    val_set = FiveKDataset_New(data_root, target=cfg.target, image_name_list=val_image_name_list, transform=pipeline)
 
     model = FeatExtractor()
-    trainer = PVTrainer(cfg, model, [train_set, val_set], ["loss", ])
+    trainer = AllPVTrainer(cfg, model, [train_set, val_set], ["loss", ])
     trainer.forward()
 
 if __name__ == "__main__":

@@ -176,4 +176,27 @@ class FiveKDataset(Dataset):
             neg_image = self.transform(neg_image)
 
         return {'positive': pos_image, 'negative': neg_image}
+   
+class FiveKDataset_New(Dataset):
+    def __init__(self, root_dir, image_name_list, target, transform=None):
+        self.root_dir = root_dir
+        self.transform = transform
+        self.image_name_list = image_name_list
+        self.experts = ['A', 'B', 'C', 'D', 'E']
     
+    def __len__(self):
+        return len(self.image_name_list)
+    
+    def __getitem__(self, idx):
+        image_name = self.image_name_list[idx]
+        paths = [osp.join(self.root_dir, e, image_name) for e in self.experts]
+
+        data = {}
+        for e, path in zip(self.experts, paths):
+            img = Image.open(path).convert('RGB')
+            if self.transform is not None:
+                img = self.transform(img)
+            data[e] = img
+
+        return data
+     
