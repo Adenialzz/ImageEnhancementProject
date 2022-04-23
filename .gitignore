@@ -136,6 +136,7 @@ weights/
 
 # images
 *.jpg
+*.png
 
 # outputs
 debug_summary/

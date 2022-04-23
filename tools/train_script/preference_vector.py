@@ -9,6 +9,7 @@ from torch.optim import SGD
 from SongUtils.MetricUtils import AverageMeter, accuracy
 from SongUtils.MLUtils.BaseTrainers import BaseTrainer, BaseDistTrainer, init_dist
 from SongUtils.MLUtils.BaseArgs import get_dist_base_parser
+from SongUtils.MiscUtils import setup_seed
 from tqdm import tqdm
 
 import sys
@@ -16,9 +17,9 @@ sys.path.append('/home/ps/JJ_Projects/ImageEnhancementProject')
 import random
 import numpy as np
 
-from utils.dataset import FiveKDataset, FiveKDataset_New
+from utils.dataset import FiveKDataset, FiveKDataset
 from models.feat_extractor import FeatExtractor
-from trainers.pv_triplet_trainer import PVTrainer, AllPVTrainer
+from trainers.pv_triplet_trainer import PVTrainer
 from utils.utils import save_tensor_image, load_weights
 
 import argparse
@@ -26,21 +27,12 @@ def get_args():
     parser = get_dist_base_parser()
     parser.add_argument('--realbatchSize', type=int, default=64)
     parser.add_argument('--seed', type=int, default=42)
-    parser.add_argument('--target', type=str, default='A')
+    parser.add_argument('--experts', type=str, default='ABCDE')
+    parser.add_argument('--same_image', action='store_true')
     cfg = parser.parse_args()
     return cfg
 
-def setup_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.deterministic = True
-
 def main_worker(local_rank, nprocs, cfg):
-    # init_dist(cfg.gpu_id, cfg.nprocs, local_rank)
     setup_seed(cfg.seed)
     pipeline = transforms.Compose([
         transforms.Resize((224, 224)),
@@ -48,15 +40,13 @@ def main_worker(local_rank, nprocs, cfg):
     ])
 
     data_root = '/ssd1t/song/Datasets/FiveK'
-    train_image_name_list = os.listdir(osp.join(data_root, 'inputs'))[: 4500]
-    val_image_name_list = os.listdir(osp.join(data_root, 'inputs'))[4500: ]
-    # train_set = FiveKDataset(data_root, target=cfg.target, image_name_list=train_image_name_list, transform=pipeline)
-    # val_set = FiveKDataset(data_root, target=cfg.target, image_name_list=val_image_name_list, transform=pipeline)
-    train_set = FiveKDataset_New(data_root, target=cfg.target, image_name_list=train_image_name_list, transform=pipeline)
-    val_set = FiveKDataset_New(data_root, target=cfg.target, image_name_list=val_image_name_list, transform=pipeline)
+    train_image_name_list = os.listdir(osp.join(data_root, 'I'))[: 4500]
+    val_image_name_list = os.listdir(osp.join(data_root, 'I'))[4500: ]
+    train_set = FiveKDataset(data_root, image_name_list=train_image_name_list, same_image=cfg.same_image, experts=list(cfg.experts), transform=pipeline)
+    val_set = FiveKDataset(data_root, image_name_list=val_image_name_list, same_image=cfg.same_image, experts=list(cfg.experts), transform=pipeline)
 
     model = FeatExtractor()
-    trainer = AllPVTrainer(cfg, model, [train_set, val_set], ["loss", ])
+    trainer = PVTrainer(cfg, model, [train_set, val_set], ["loss", ])
     trainer.forward()
 
 if __name__ == "__main__":
