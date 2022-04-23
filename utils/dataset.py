@@ -154,42 +154,28 @@ class ColorizationDataset(Dataset):
         return sample
 
 class FiveKDataset(Dataset):
-    def __init__(self, root_dir, image_name_list, target, transform=None):
+    def __init__(self, root_dir, image_name_list, same_image, transform=None, experts=['A', 'B', 'C', 'D', 'E']):
         self.root_dir = root_dir
+        self.experts = experts
+        self.same_image = same_image
         self.transform = transform
         self.image_name_list = image_name_list
-        self.neg_dir = ['A', 'B', 'C', 'D', 'E']
-        self.neg_dir.remove(target)
-        self.pos_dir = target
     
     def __len__(self):
         return len(self.image_name_list)
     
-    def __getitem__(self, idx):
-        image_name = self.image_name_list[idx]
-        pos_path = osp.join(self.root_dir, self.pos_dir, image_name)
-        neg_path = osp.join(self.root_dir, random.choice(self.neg_dir), image_name)
-        pos_image = Image.open(pos_path).convert('RGB')
-        neg_image = Image.open(neg_path).convert('RGB')
-        if self.transform is not None:
-            pos_image = self.transform(pos_image)
-            neg_image = self.transform(neg_image)
+    def get_random_idx(self, num, max=4999):
+        random_list = [random.randint(0, max) for _ in range(num)]
+        return random_list
 
-        return {'positive': pos_image, 'negative': neg_image}
-   
-class FiveKDataset_New(Dataset):
-    def __init__(self, root_dir, image_name_list, target, transform=None):
-        self.root_dir = root_dir
-        self.transform = transform
-        self.image_name_list = image_name_list
-        self.experts = ['A', 'B', 'C', 'D', 'E']
-    
-    def __len__(self):
-        return len(self.image_name_list)
-    
     def __getitem__(self, idx):
-        image_name = self.image_name_list[idx]
-        paths = [osp.join(self.root_dir, e, image_name) for e in self.experts]
+        if self.same_image:
+            idx_list = [idx for _ in range(len(self.experts))]
+        else:
+            idx_list = [idx]
+            idx_list += self.get_random_idx(len(self.experts) - 1, max=len(self.image_name_list) - 1)
+
+        paths = [osp.join(self.root_dir, e, self.image_name_list[idx]) for e, idx in zip(self.experts, idx_list)]
 
         data = {}
         for e, path in zip(self.experts, paths):
@@ -200,3 +186,13 @@ class FiveKDataset_New(Dataset):
 
         return data
      
+if __name__ == "__main__":
+    data_root = '/ssd1t/song/Datasets/FiveK'
+    val_image_name_list = os.listdir(osp.join(data_root, 'inputs'))[4500: ]
+    pipeline = transforms.Compose( [transforms.ToTensor()] )
+    dataset = FiveKDataset(data_root, val_image_name_list, same_image=False, transform=pipeline)
+    dataloader = DataLoader(dataset, batch_size=1)
+    for data in dataloader:
+        print('*'*42)
+        for k, v in data.items():
+            print(k, v.shape)
