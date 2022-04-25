@@ -35,7 +35,7 @@ def get_args():
 def main_worker(local_rank, nprocs, cfg):
     setup_seed(cfg.seed)
     pipeline = transforms.Compose([
-        transforms.Resize((224, 224)),
+        # transforms.Resize((224, 224)),
         transforms.ToTensor()
     ])
 

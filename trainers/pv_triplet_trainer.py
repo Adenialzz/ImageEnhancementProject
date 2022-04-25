@@ -66,8 +66,10 @@ class PVTrainer(BaseTrainer):
             e = self.experts.copy()
             e.remove(pos)
             neg = random.choice(e)
-            self.logger.debug(f"pos: {pos}, neg: {neg}")
+            # self.logger.info(f"pos: {pos}, neg: {neg}")
             data_neg = data[neg].to(self.device)
+            print(data_neg.shape)
+            
             bs = data_pos.shape[0]
 
             feat_pos = self.model(data_pos)
