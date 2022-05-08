@@ -12,8 +12,9 @@ from SongUtils.MLUtils.BaseArgs import get_dist_base_parser
 from SongUtils.MiscUtils import setup_seed
 from tqdm import tqdm
 
+import os
 import sys
-sys.path.append('/home/ps/JJ_Projects/ImageEnhancementProject')
+sys.path.append(os.getcwd())
 import random
 import numpy as np
 
@@ -26,16 +27,19 @@ import argparse
 def get_args():
     parser = get_dist_base_parser()
     parser.add_argument('--realbatchSize', type=int, default=64)
+    parser.add_argument('--margin', type=float, default=0.2)
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--experts', type=str, default='ABCDE')
+    parser.add_argument('--arch', type=str, default='resnet34')
     parser.add_argument('--same_image', action='store_true')
+    parser.add_argument('--pretrained', action='store_true')
     cfg = parser.parse_args()
     return cfg
 
 def main_worker(local_rank, nprocs, cfg):
     setup_seed(cfg.seed)
     pipeline = transforms.Compose([
-        # transforms.Resize((224, 224)),
+        transforms.Resize((224, 224)),
         transforms.ToTensor()
     ])
 
@@ -45,7 +49,7 @@ def main_worker(local_rank, nprocs, cfg):
     train_set = FiveKDataset(data_root, image_name_list=train_image_name_list, same_image=cfg.same_image, experts=list(cfg.experts), transform=pipeline)
     val_set = FiveKDataset(data_root, image_name_list=val_image_name_list, same_image=cfg.same_image, experts=list(cfg.experts), transform=pipeline)
 
-    model = FeatExtractor()
+    model = FeatExtractor(arch=cfg.arch, pretrained=cfg.pretrained)
     trainer = PVTrainer(cfg, model, [train_set, val_set], ["loss", ])
     trainer.forward()
 

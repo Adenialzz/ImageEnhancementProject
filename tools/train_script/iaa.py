@@ -14,8 +14,7 @@ from SongUtils.MLUtils.BaseArgs import get_dist_base_parser
 from tqdm import tqdm
 
 import sys
-# sys.path.append('..')
-sys.path.append('/home/ps/JJ_Projects/ImageEnhancementProject')
+sys.path.append(os.getcwd())
 
 from utils.dataset import EnhanceDataset, AVADataset
 from models.nicer_models import CAN

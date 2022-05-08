@@ -39,7 +39,7 @@ class PVTrainer(BaseTrainer):
         torch.save(k_state, osp.join(self.cfg.model_path, f"pv_k_{epoch}.pth"))
 
     def init_loss_func(self):
-        self.loss_func = TripletLoss()
+        self.loss_func = TripletLoss(margin=self.cfg.margin)
     
     def init_optimizer(self):
         optim_params = [
@@ -63,19 +63,26 @@ class PVTrainer(BaseTrainer):
         _loss = AverageMeter()
         for epoch_step, (data, pos) in enumerate(zip(loader, itertools.cycle(self.experts))):
             data_pos = data[pos].to(self.device)
-            e = self.experts.copy()
-            e.remove(pos)
-            neg = random.choice(e)
-            # self.logger.info(f"pos: {pos}, neg: {neg}")
-            data_neg = data[neg].to(self.device)
-            print(data_neg.shape)
-            
             bs = data_pos.shape[0]
+            feat_dict = {}
+            
+            # forward model
+            for e, image in data.items():
+                image = image.to(self.device)
+                feat = self.model(image)
+                feat_dict[e] = feat
 
-            feat_pos = self.model(data_pos)
-            feat_neg = self.model(data_neg)
-            feat_k = self.k_dict[pos].expand(bs, -1).to(self.device)
-            loss = self.loss_func(feat_k, feat_pos, feat_neg)
+            # calculate loss
+            loss = 0.
+            cal_cnt = 0
+            for e_pos, feat_pos in feat_dict.items():
+                feat_k = self.k_dict[e_pos].expand(bs, -1).to(self.device)
+                for e_neg, feat_neg in feat_dict.items():
+                    if e_pos == e_neg:
+                        continue
+                    loss += self.loss_func(feat_k, feat_pos, feat_neg)
+                    cal_cnt += 1
+            loss /= cal_cnt
 
             if isTrain :
                 loss.backward()
