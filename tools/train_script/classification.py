@@ -26,6 +26,7 @@ import argparse
 def get_args():
     parser = get_dist_base_parser()
     parser.add_argument('--n_classes', type=int, default=9)
+    parser.add_argument('--dataset', type=str, default='t_inet', choices=['t_inet', 'fivek'])
     cfg = parser.parse_args()
     return cfg
 
@@ -35,15 +36,17 @@ def main_worker(local_rank, nprocs, cfg):
         transforms.Resize((224, 224)),
         transforms.ToTensor()
     ])
-    # trainpath = '/ssd1t/song/Datasets/FiveK/ImageFolders/'
-    # valpath = '/ssd1t/song/Datasets/FiveK/ImageFolders/'
-    trainpath = 't_inet/'
-    valpath = 't_inet/'
+    if cfg.dataset == 'fivek':
+        trainpath = '/ssd1t/song/Datasets/FiveK/ImageFolders/'
+        valpath = '/ssd1t/song/Datasets/FiveK/ImageFolders/'
+    elif cfg.dataset == 't_inet':
+        trainpath = 't_inet/'
+        valpath = 't_inet/'
     train_set = ImageFolder(trainpath, transform=pipeline)
     val_set = ImageFolder(trainpath, transform=pipeline)
 
-    model = timm.create_model('resnet18', num_classes=cfg.n_classes)
-    # model = load_timm_weights(model, '/home/ps/.cache/torch/hub/checkpoints//jx_vit_base_patch16_224_in21k-e5005f0a.pth')
+    model = timm.create_model('resnet18', num_classes=cfg.n_classes, pretrained=True)
+    # model = load_timm_weights(model, '/home/ps/.cache/torch/hub/checkpoints/jx_vit_base_patch16_224_in21k-e5005f0a.pth')
 
     metrics_list = [
         "loss", "acc",

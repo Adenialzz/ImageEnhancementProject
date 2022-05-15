@@ -1,10 +1,15 @@
 import sys
+import torch
 from SongUtils.MLUtils.BaseTrainers import BaseTrainer
 from SongUtils.MetricUtils import AverageMeter, accuracy
 
 class ClassificationTrainer(BaseTrainer):
     def __init__(self, cfg, model, dataset_list, metrics_list):
         super().__init__(cfg, model, dataset_list, metrics_list)
+        self.softmax = torch.nn.Softmax(dim=1)
+    
+    def init_loss_func(self):
+        self.loss_func = torch.nn.CrossEntropyLoss()
     
     def epoch_forward(self, isTrain, epoch):
         _loss = AverageMeter()
@@ -23,6 +28,7 @@ class ClassificationTrainer(BaseTrainer):
             if isTrain:
                 self.optimizer.zero_grad()
             output = self.model(image)
+            output = self.softmax(output)
             loss = self.loss_func(output, label)
             acc = accuracy(output, label, [1, ])[0]
             if isTrain:
