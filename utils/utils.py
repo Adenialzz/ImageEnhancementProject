@@ -1,6 +1,7 @@
 import torch
 import cv2
 import numpy as np
+import kornia.enhance as ke
 
 def get_filter_tokens(intensity_str, model_type, size=224):
     intensity2value_map = {
@@ -76,7 +77,33 @@ def load_timm_weights(model, weights_path):
     return model
 
 
+def kornia_edit(input_tensor_image, method, inten):
+    func = eval(f"ke.adjust_{method}")
+    outputs = func(input_tensor_image, inten)
+    # [-0.5, 0.5], origin: 0.
+    # outputs = ke.adjust_contrast(inputs, inten)      # [0.2, 1.8], 1.
+    # outputs = ke.adjust_hue(inputs, -2.)            # [-3., 3.], 0.
+    # outputs = ke.adjust_saturation(inputs, 10.)      # [0., 5.]. 1.
+    # outputs = ke.adjust_gamma(inputs, 1.8)             # [0.2, 1.8], 1.
 
-def save_tensor_image(tensor, path):
+    return outputs
+
+
+
+def save_tensor_image(tensor, save_path):
     img = tensor.permute(1, 2, 0).numpy()[:, :, ::-1] * 255.
-    cv2.imwrite(path, img)
+    cv2.imwrite(save_path, img)
+
+def load_tensor_image(image_path):
+    array = cv2.imread(image_path)[:, :, ::-1].transpose(2, 0, 1) / 255.
+    tensor = torch.from_numpy(array)
+    return tensor
+
+def _load_tensor_imag_pil(image_path):
+    pipeline = transforms.Compose([
+        # transforms.Resize((224, 224)),
+        transforms.ToTensor()
+    ])
+
+    tensor = pipeline(Image.open(image_path).convert('RGB'))
+    return tensor
