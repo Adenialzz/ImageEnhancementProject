@@ -136,6 +136,8 @@ weights/
 
 # images
 *.jpg
+*.jpeg
+*.JPEG
 *.png
 
 # outputs
