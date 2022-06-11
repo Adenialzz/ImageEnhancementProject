@@ -17,7 +17,7 @@ class PVTrainer(BaseTrainer):
     def __init__(self, cfg, model, dataset_list, metrics_list):
         self.experts = list(cfg.experts)
         self.k_dict = {
-            e: torch.nn.Parameter(torch.zeros(1, cfg.feat_dim))
+            e: torch.nn.Parameter(torch.randn(1, cfg.feat_dim))
             for e in self.experts
         }
         super(PVTrainer, self).__init__(cfg, model, dataset_list, metrics_list)
@@ -40,6 +40,9 @@ class PVTrainer(BaseTrainer):
 
     def init_loss_func(self):
         self.loss_func = TripletLoss(margin=self.cfg.margin)
+    
+    def update_margin(self):
+        pass
     
     def init_optimizer(self):
         optim_params = [

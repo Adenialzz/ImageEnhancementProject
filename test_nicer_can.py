@@ -6,7 +6,6 @@ import cv2
 from PIL import Image
 
 from models.nicer_models import CAN
-from models.sit import VisionTransformer_SiT
 from utils.utils import load_weights, save_tensor_image
 mse_loss_func = torch.nn.MSELoss()
 

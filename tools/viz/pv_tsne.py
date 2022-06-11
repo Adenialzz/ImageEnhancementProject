@@ -12,7 +12,7 @@ import random
 import sys
 sys.path.append(os.getcwd())
 from SongUtils.MiscUtils import setup_seed
-from models.feat_extractor import FeatExtractor
+from models.feat_extractor import FeatExtractor, FeatExtractor_ViT
 
 from run_tsne import run_tsne
 
@@ -28,12 +28,11 @@ def load_feat_extractor(weights_path, model):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('job_name', help='job name')
+    parser.add_argument('model_dir', help='model_dir')
     parser.add_argument('--epoch', default=30, help='which epoch of results to load')
     parser.add_argument('--n_samples', type=int, default=50)
     parser.add_argument('--experts', default=None)
-    parser.add_argument('--out', default='tsne.png')
-    parser.add_argument('--base_dir', default='/media/song/ImageEnhancingResults/weights/train_pv')
+    parser.add_argument('--out', default='pv_tsne.png')
     parser.add_argument('--device', default='cuda:1')
     parser.add_argument('--arch', default='resnet34')
     cfg = parser.parse_args()
@@ -43,7 +42,7 @@ if __name__ == "__main__":
     cfg = parse_args()
     setup_seed(46)
     data_root = '/ssd1t/song/Datasets/FiveK/'
-    pv = get_k(osp.join(cfg.base_dir, cfg.job_name, f'pv_k_{cfg.epoch}.pth'))
+    pv = get_k(osp.join(cfg.model_dir, f'pv_k_{cfg.epoch}.pth'))
     if cfg.experts is None:
         cfg.experts = list(pv.keys())
 
@@ -55,8 +54,9 @@ if __name__ == "__main__":
         random.shuffle(image_list_all)
         image_list = image_list_all[: cfg.n_samples]
         base_expert_dir = osp.join(data_root, e)
-        model = FeatExtractor(arch=cfg.arch, pretrained=False)
-        model = load_feat_extractor(osp.join(cfg.base_dir, cfg.job_name, f"model_{cfg.epoch}.pth"), model)
+        # model = FeatExtractor(arch=cfg.arch, pretrained=False)
+        model = FeatExtractor_ViT(arch='vit_tiny_patch16_224', pretrained=False)
+        model = load_feat_extractor(osp.join(cfg.model_dir, f"model_{cfg.epoch}.pth"), model)
         model = model.to(cfg.device)
         for image in tqdm(image_list):
             image_path = osp.join(base_expert_dir, image)
@@ -64,9 +64,10 @@ if __name__ == "__main__":
             img = pipeline(img).unsqueeze(dim=0)
             img = img.to(cfg.device)
             feat = model(img)
-            feat = feat.cpu().detach().numpy()
+            feat = feat.squeeze().cpu().detach().numpy()
             feats_list.append(feat)
     image_feats = np.array(feats_list)
+    print(image_feats.shape)
     
     expert_feats = np.zeros((0, 512))
     for e, feat in pv.items():

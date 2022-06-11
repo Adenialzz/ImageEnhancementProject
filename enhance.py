@@ -24,7 +24,7 @@ class Enhancer:
     
     def run(self, image):
         filter_tensors = torch.zeros((8, 224, 224), dtype=np.float32).to(self.device)
-        pass
+        return  filter_tensors
 
 
 def main():

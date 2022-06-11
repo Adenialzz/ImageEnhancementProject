@@ -12,8 +12,10 @@ from SongUtils.MLUtils.BaseArgs import get_dist_base_parser
 from tqdm import tqdm
 
 from utils.dataset import EnhanceDataset, AVADataset
-from models.vit_enhancers import ViT_Enhancer_Channels
-from trainers.vit_enhancer_trainer import EnhancerTrainer
+# from models.vit_enhancers import ViT_Enhancer_Channels
+from models.nicer_models import CAN
+# from trainers.vit_enhancer_trainer import EnhancerTrainer
+from trainers.editor_trainers import EditorTrainer_Channels
 from utils.edit_transform import ImageEditor
 from utils.utils import save_tensor_image, load_weights_resize_pos_embed
 
@@ -37,20 +39,18 @@ def main_worker(local_rank, nprocs, cfg):
     val_set = AVADataset(osp.join(csv_root, 'val_mlsp.csv'), ava_root, transform=pipeline)
 
 
-    model = ViT_Enhancer_Channels(in_chans=8, depth=6)
+    # model = ViT_Enhancer_Channels(in_chans=8, depth=6)
+    model = CAN(no_of_filters=5)
     # model = load_weights_resize_pos_embed(model, "/media/song/ImageEnhancingResults/weights/vit_editor_channels_d6_lr1e-1/model_42.pth")
     metrics_list = [
         "emd_loss", "mse_loss", "loss",
         "plcc_mean", "srcc_mean", "plcc_std", "srcc_std",
         "acc"
     ]
-    trainer = EnhancerTrainer(cfg, model, [train_set, val_set], metrics_list)
-    # trainer = EditorTrainer_Tokens(cfg, model, [train_set, val_set], ["loss", ])
+    trainer = EditorTrainer_Channels(cfg, model, [train_set, val_set], metrics_list)
     trainer.forward()
 
 
 if __name__ == "__main__":
     cfg = get_args()
     main_worker(None, None, cfg)
-    # import torch.multiprocessing as mp
-    # mp.spawn(main_worker, nprocs=cfg.nprocs, args=(cfg.nprocs, cfg))

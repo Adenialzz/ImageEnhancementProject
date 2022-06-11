@@ -19,7 +19,7 @@ import random
 import numpy as np
 
 from utils.dataset import FiveKDataset, FiveKDataset
-from models.feat_extractor import FeatExtractor, FeatExtractor_FC
+from models.feat_extractor import FeatExtractor, FeatExtractor_FC, FeatExtractor_ViT
 from trainers.pv_triplet_trainer import PVTrainer, PVTrainer_Depc
 from utils.utils import save_tensor_image, load_weights
 
@@ -51,7 +51,8 @@ def main_worker(local_rank, nprocs, cfg):
     val_set = FiveKDataset(data_root, image_name_list=val_image_name_list, same_image=cfg.same_image, experts=list(cfg.experts), transform=pipeline)
 
     # model = FeatExtractor_FC(arch=cfg.arch, pretrained=cfg.pretrained)
-    model = FeatExtractor(arch=cfg.arch, pretrained=cfg.pretrained)
+    # model = FeatExtractor(arch=cfg.arch, pretrained=cfg.pretrained)
+    model = FeatExtractor_ViT(arch=cfg.arch, pretrained=cfg.pretrained)
     if cfg.use_depc_trainer:
         trainer = PVTrainer_Depc(cfg, model, [train_set, val_set], ["loss", ])
     else:

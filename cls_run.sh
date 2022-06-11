@@ -1,5 +1,5 @@
 mode=$1
-lr=1e-1
+lr=1e-2
 dset=t_inet
 job_name=classification_lr${lr}_dset${dset}_wSoftmax
 

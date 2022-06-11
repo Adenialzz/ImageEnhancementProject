@@ -91,7 +91,9 @@ def kornia_edit(input_tensor_image, method, inten):
 
 
 def save_tensor_image(tensor, save_path):
-    img = tensor.permute(1, 2, 0).numpy()[:, :, ::-1] * 255.
+    tensor = tensor.detach()
+    # img = tensor.permute(1, 2, 0).numpy()[:, :, ::-1] * 255.
+    img = tensor.permute(1, 2, 0).numpy() * 255.
     cv2.imwrite(save_path, img)
 
 def load_tensor_image(image_path):
@@ -107,3 +109,11 @@ def _load_tensor_imag_pil(image_path):
 
     tensor = pipeline(Image.open(image_path).convert('RGB'))
     return tensor
+
+def imagefolder_split_trainval(imagefolder):
+    clslist = os.listdir(imagefolder)
+    for clsdir in clslist:
+        print()
+    
+if __name__ == '__main__':
+    imagefolder_split_trainval()

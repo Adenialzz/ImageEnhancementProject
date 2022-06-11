@@ -14,6 +14,18 @@ class FeatExtractor(torch.nn.Module):
         feat = self.sigmoid(feat)
         return feat
 
+class FeatExtractor_ViT(torch.nn.Module):
+    def __init__(self, arch, pretrained):
+        super(FeatExtractor_ViT, self).__init__()
+        assert arch in ['vit_tiny_patch16_224']
+        self.base_model = timm.create_model(arch, pretrained=pretrained, num_classes=512)
+        self.sigmoid = torch.nn.Sigmoid()
+    
+    def forward(self, x):
+        feat = self.base_model(x)
+        feat = self.sigmoid(feat)
+        return feat
+
 class FeatExtractor_FC(torch.nn.Module):
     def __init__(self, arch, pretrained):
         super(FeatExtractor_FC, self).__init__()

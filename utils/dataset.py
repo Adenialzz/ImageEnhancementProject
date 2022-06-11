@@ -185,6 +185,42 @@ class FiveKDataset(Dataset):
             data[e] = img
 
         return data
+
+class FiveKDataset4PV_Editor(Dataset):
+    def __init__(self, root_dir,target_experts, image_name_list, input_expert='I', transform=None):
+        assert input_expert not in target_experts
+        self.input_expert = input_expert
+        self.root_dir = root_dir
+        self.image_name_list = image_name_list
+        self.transform = transform
+        self.target_experts = target_experts
+
+    def __len__(self):
+        return len(self.image_name_list)
+    
+    def __getitem__(self, idx):
+        target_images = {}
+        for e in self.target_experts:
+            imagepath = osp.join(self.root_dir, e, self.image_name_list[idx])
+            img = Image.open(imagepath).convert('RGB')
+            if self.transform is not None:
+                tensor_img = self.transform(img)
+            else:
+                tensor_img = transforms.ToTensor()(img)
+            target_images[e] = tensor_img
+        input_image_path = osp.join(self.root_dir, self.input_expert, self.image_name_list[idx])
+        img = Image.open(input_image_path).convert('RGB')
+        if self.transform is not None:
+            input_image = self.transform(img)
+        else:
+            input_image = transforms.ToTensor()(img)
+        data = {
+            'input_image': input_image,
+            'target_images': target_images
+        }
+        return data
+
+
      
 if __name__ == "__main__":
     data_root = '/ssd1t/song/Datasets/FiveK'
@@ -196,3 +232,13 @@ if __name__ == "__main__":
         print('*'*42)
         for k, v in data.items():
             print(k, v.shape)
+
+
+
+
+
+
+
+
+
+
